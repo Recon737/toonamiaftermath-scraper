@@ -9,8 +9,3 @@ if [ ! -d $DATA_PATH ]; then
 	echo "First boot with mounted /data/ToonamiAftermath detected."
 	mkdir -p $DATA_PATH
 fi
-
-chown -R 900:900 $DATA_PATH
-chmod -R 0755 $DATA_PATH
-
-chmod +x /app/ta-wrapper.sh

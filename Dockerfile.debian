@@ -17,7 +17,6 @@ RUN    echo "##### Downloading Runtime Packages #####" && \
 		inst-pkg \
             libxml2-dev \
             libxslt-dev \
-            nginx \
 			python3 \
             python3-pip \
 			zip && \
@@ -32,26 +31,5 @@ RUN    echo "##### Downloading Runtime Packages #####" && \
 	echo "##### Cron setup #####" && \
 		# Execute the cron job every 2 hours at 15 mins after.
 		echo "0	*/12	*	*	*	root /app/ta-wrapper.sh" >> /etc/crontab && \
-    echo "##### Removing Unnecessary NGINX Files#####" && \
-        rm -rf \
-            /etc/init.d/* \
-            /etc/nginx/nginx.conf \
-            /etc/logrotate.d/nginx \
-            /etc/nginx/conf.d \
-            /etc/nginx/modules \
-            /var/lib/nginx/* \
-            /var/log/nginx \
-            /var/www && \
-    echo "#### Setting up users and groups for nginx ####" && \
-        mkdir -p \
-            /config/log/nginx \
-            /config/certs && \
-        useradd -u 901 \
-                --system \
-                --home-dir /dev/null \
-                --no-create-home \
-                --shell /sbin/nologin \
-                nginx && \
-        ln -s /config/log/nginx /var/lib/nginx/logs
 ENV PYTHONPATH=/app/ToonamiAftermath/
 ENV FIRST_RUN=TRUE
