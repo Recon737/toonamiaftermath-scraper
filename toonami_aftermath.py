@@ -28,22 +28,26 @@ class ToonamiAftermath:
     """
     Toonami Aftermath Class
     """
-    channels_data_file = pathlib.Path(__file__).parent / 'data' / 'channels.xml'
-    config_dir = pathlib.Path('/config')
-    data_out_dir = '/data/ToonamiAftermath/'
-    if os.path.exists(data_out_dir):
-        m3u_file_name = data_out_dir + 'ToonamiAftermath.m3u'
-        xmltv_file_name = data_out_dir + 'ToonamiAftermathGuide.xml'
-        media_info_file = config_dir / 'ToonamiAftermathMediaInfo.xml'
+    channels_data_file = pathlib.Path(__file__).parent / 'ToonamiAftermath' / 'data' / 'channels.xml'
+    data_out_dir = pathlib.Path('output/').resolve()
+    log_dir = None
+    
+    #CONSTRUCT OUTPUT PATHS
+    #if the output directory path doesnt exist, create it 
+    pathlib.Path.mkdir(data_out_dir, parents=True, exist_ok=True)
+    #construct file paths for output files
+    m3u_file_name = data_out_dir / 'ToonamiAftermath.m3u'
+    xmltv_file_name = data_out_dir / 'ToonamiAftermathGuide.xml'
+    media_info_file = data_out_dir / 'ToonamiAftermathMediaInfo.xml'
+    
+    #if no log_dir is specified, output to subfolder 'log' without output path
+    if log_dir == None:
+        log_dir = data_out_dir / 'log'
     else:
-        m3u_file_name = 'ToonamiAftermath.m3u'
-        xmltv_file_name = 'ToonamiAftermathGuide.xml'
-        media_info_file = 'ToonamiAftermathMediaInfo.xml'
-
-    if os.path.exists(config_dir):
-        log_file = config_dir / 'log' / 'ToonamiAftermath.log'
-    else:
-        log_file = 'ToonamiAftermath.log'
+        log_dir = pathlib.Path(log_dir).resolve()
+    #if the log directory path doesnt exist, create it 
+    pathlib.Path.mkdir(data_out_dir, parents=True, exist_ok=True)
+    log_file = log_dir / 'ToonamiAftermath.log'
 
     GUIDE_ITEMS_PER_CHANNEL = os.getenv('GUIDE_ITEMS_PER_CHANNEL', 200)
     USE_EPISODE_CACHE = os.getenv('USE_EPISODE_CACHE', True)
