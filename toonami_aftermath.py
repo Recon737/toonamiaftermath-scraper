@@ -59,7 +59,6 @@ class ToonamiAftermath:
         """
         self.channels_data_file = pathlib.Path(__file__).parent / 'ToonamiAftermath' / 'data' / 'channels.xml'
         self.data_out_dir = pathlib.Path(self.data_out_dir).resolve()
-        self.log_dir = None
         #if the output directory path doesnt exist, create it 
         pathlib.Path.mkdir(self.data_out_dir, parents=True, exist_ok=True)
         #construct file paths for output files
