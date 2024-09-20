@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List, Optional
+from datetime import date
 
 
 @dataclass
@@ -104,6 +105,11 @@ class Element:
             "required": True,
         }
     )
+    def getScheduleUrl(self, date: date=date.today(), guide_items_count: int=200):
+        if self.scheduleUrl != None:
+            return self.scheduleUrl + \
+                   '&dateString={}'.format(date) + \
+                   '&count={}'.format(guide_items_count)
 
 
 @dataclass
