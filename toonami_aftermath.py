@@ -1,6 +1,5 @@
 from datetime import date, datetime, timedelta
 from typing import Any
-
 from dateutil import rrule, parser
 import dicttoxml
 from jinja2 import Template
@@ -18,55 +17,75 @@ from xsdata.formats.dataclass.context import XmlContext
 from xsdata.formats.dataclass.parsers import XmlParser
 from xsdata.formats.dataclass.serializers.config import SerializerConfig
 from ToonamiAftermath import media, mediaInfo, taChannels
+import argparse
 
 _NEW_DATE_FORMAT_MINIMAL = '%Y%m%d'
 _NEW_DATE_FORMAT = '%Y%m%d%H%M%S %z'
 _NEW_DATE_FORMAT_NO_TZ = '%Y%m%d%H%M%S'
 
 
+
+
 class ToonamiAftermath:
     """
     Toonami Aftermath Class
     """
-    channels_data_file = pathlib.Path(__file__).parent / 'ToonamiAftermath' / 'data' / 'channels.xml'
-    data_out_dir = pathlib.Path('output/').resolve()
-    log_dir = None
+    def __init__(self, out_dir: str="output/", log_dir: str=None, guide_items: int=200, ep_cache: bool=False, log_level: str="ERROR"):
+        self.data_out_dir = out_dir
+        self.log_dir = log_dir
+        self.GUIDE_ITEMS_PER_CHANNEL = guide_items
+        self.USE_EPISODE_CACHE = ep_cache
+        validLogging = ["WARNING", "ERROR", "CRITICAL", "INFO", "WARN", "DEBUG"]
+        if log_level not in validLogging:
+            log_level = "ERROR"
+        self.LOG_LEVEL = log_level
+        self.__init_constants()
+        self.__init_output_paths()
+        self.__init_logging()
+
+    def __init_constants(self):
+        self.URL_CONTEXT = ssl._create_unverified_context()
+        self.XML_PARSER = XmlParser(context=XmlContext())
+        self.MEDIA_GUIDE_OBJECT = media.Root(element=[])
+        self.SERIALIZER_CONFIG = SerializerConfig(pretty_print=True)
+
+        self.CHANNELS: taChannels.Root
+        self.all_episodes = mediaInfo.Root(element=[])
+        self.TV_OBJECT: xmltv.Tv
     
-    #CONSTRUCT OUTPUT PATHS
-    #if the output directory path doesnt exist, create it 
-    pathlib.Path.mkdir(data_out_dir, parents=True, exist_ok=True)
-    #construct file paths for output files
-    m3u_file_name = data_out_dir / 'ToonamiAftermath.m3u'
-    xmltv_file_name = data_out_dir / 'ToonamiAftermathGuide.xml'
-    media_info_file = data_out_dir / 'ToonamiAftermathMediaInfo.xml'
+    def __init_output_paths(self):
+        """
+        This generates and the output file paths for each output file, and creates the directories if needed.
+        """
+        self.channels_data_file = pathlib.Path(__file__).parent / 'ToonamiAftermath' / 'data' / 'channels.xml'
+        self.data_out_dir = pathlib.Path(self.data_out_dir).resolve()
+        self.log_dir = None
+        #if the output directory path doesnt exist, create it 
+        pathlib.Path.mkdir(self.data_out_dir, parents=True, exist_ok=True)
+        #construct file paths for output files
+        self.m3u_file_name = self.data_out_dir / 'ToonamiAftermath.m3u'
+        self.xmltv_file_name = self.data_out_dir / 'ToonamiAftermathGuide.xml'
+        self.media_info_file = self.data_out_dir / 'ToonamiAftermathMediaInfo.xml'
     
-    #if no log_dir is specified, output to subfolder 'log' without output path
-    if log_dir == None:
-        log_dir = data_out_dir / 'log'
-    else:
-        log_dir = pathlib.Path(log_dir).resolve()
-    #if the log directory path doesnt exist, create it 
-    pathlib.Path.mkdir(data_out_dir, parents=True, exist_ok=True)
-    log_file = log_dir / 'ToonamiAftermath.log'
-
-    GUIDE_ITEMS_PER_CHANNEL = os.getenv('GUIDE_ITEMS_PER_CHANNEL', 200)
-    USE_EPISODE_CACHE = os.getenv('USE_EPISODE_CACHE', True)
-
-    dicttoxml.LOG.setLevel(logging.ERROR)
-    LOGGER = logging.getLogger('ToonamiAftermath-Logger')
-    logging.basicConfig(format='%(asctime)s %(name)s %(funcName)s [%(levelname)s]: %(message)s',
-                        level=logging.getLevelName(os.getenv('LOG_LEVEL', 'ERROR')),
-                        handlers=[logging.FileHandler(log_file),
-                                  logging.StreamHandler()])
-
-    URL_CONTEXT = ssl._create_unverified_context()
-    XML_PARSER = XmlParser(context=XmlContext())
-    MEDIA_GUIDE_OBJECT = media.Root(element=[])
-    SERIALIZER_CONFIG = SerializerConfig(pretty_print=True)
-
-    CHANNELS: taChannels.Root
-    all_episodes = mediaInfo.Root(element=[])
-    TV_OBJECT: xmltv.Tv
+        #if no log_dir is specified, output to subfolder 'log' without output path
+        if self.log_dir == None:
+            self.log_dir = self.data_out_dir / 'log'
+        else:
+            self.log_dir = pathlib.Path(self.log_dir).resolve()
+        #if the log directory path doesnt exist, create it 
+        pathlib.Path.mkdir(self.log_dir, parents=True, exist_ok=True)
+        self.log_file = self.log_dir / 'ToonamiAftermath.log'
+    
+    def __init_logging(self):
+        """
+        This method initializes the logger.
+        """
+        dicttoxml.LOG.setLevel(logging.ERROR)
+        self.LOGGER = logging.getLogger('ToonamiAftermath-Logger')
+        logging.basicConfig(format='%(asctime)s %(name)s %(funcName)s [%(levelname)s]: %(message)s',
+                            level=logging.getLevelName(self.LOG_LEVEL),
+                            handlers=[logging.FileHandler(self.log_file),
+                                    logging.StreamHandler()])
 
     def main(self):
         self.TV_OBJECT = xmltv.Tv(
@@ -132,9 +151,7 @@ class ToonamiAftermath:
         :return: N/A
         """
         if channel_object.scheduleUrl is not None:
-            prepared_url = channel_object.scheduleUrl + \
-                           '&dateString={}'.format(date.today()) + \
-                           '&count={}'.format(self.GUIDE_ITEMS_PER_CHANNEL)
+            prepared_url = channel_object.getScheduleUrl(guide_items_count=self.GUIDE_ITEMS_PER_CHANNEL)
             json_object = self.get_json_obj_from_url(json_url=prepared_url)
             if json_object is None:
                 self.LOGGER.error('The URL {} has no media info.'.format(prepared_url))
@@ -325,7 +342,7 @@ class ToonamiAftermath:
             channels=self.CHANNELS.element
         )
         self.LOGGER.debug('Writing channels to {}.'.format(m3u_out_file))
-        open(m3u_out_file, 'w').write(m3u_template)
+        open(m3u_out_file, 'w', encoding='UTF-8').write(m3u_template)
 
     def get_proper_date_time(self, date_time_string, new_format):
         """
@@ -368,7 +385,18 @@ converter.register_converter(str, CustomStringConverter())
 
 
 def main():
-    ta = ToonamiAftermath()
+    argparser = argparse.ArgumentParser("toonami_aftermath")
+    argparser.add_argument("--out_dir", help="Output Directory. Defaults to 'output/'", required=False, type=str)
+    argparser.add_argument("--log_dir", help="Log Output Directory. Defaults to 'log/' within the out_dir", required=False, type=str)
+    argparser.add_argument("--guide_items", help="Specifies how many guide items should be produced per channel.", required=False, type=int)
+    argparser.add_argument("--ep_cache", help="Determines if the episode cache should be used.", required=False, type=bool)
+    argparser.add_argument("--log_level", help="What level the general logger operates at.", required=False, type=str)
+    args = argparser.parse_args()
+    argsDict = {}
+    for key in vars(args).keys():
+        if vars(args)[key] != None:
+            argsDict[key] = vars(args)[key]
+    ta = ToonamiAftermath(**argsDict)
     ta.main()
 
 
